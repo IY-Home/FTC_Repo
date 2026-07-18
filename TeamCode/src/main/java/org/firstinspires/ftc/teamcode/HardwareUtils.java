@@ -10,12 +10,14 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 public class HardwareUtils {
     private final DcMotor frontLeft, frontRight, backLeft, backRight, indexer, intake;
@@ -47,14 +49,14 @@ public class HardwareUtils {
         USE_IMU = false;
         USE_INTAKE = false;
         deviceMap = new HashMap<>();
-        deviceMap.put("frontLeft", "fl");
-        deviceMap.put("frontRight", "fr");
-        deviceMap.put("backLeft", "bl");
-        deviceMap.put("backRight", "br");
-        deviceMap.put("indexer", "id");
-        deviceMap.put("leftShooter", "ls");
-        deviceMap.put("rightShooter", "rs");
-        if (USE_INTAKE) deviceMap.put("intake", "it");
+        deviceMap.put("frontLeft", "FL");
+        deviceMap.put("frontRight", "FR");
+        deviceMap.put("backLeft", "BL");
+        deviceMap.put("backRight", "BR");
+        deviceMap.put("indexer", "intake");
+        deviceMap.put("leftShooter", "upshooter");
+        deviceMap.put("rightShooter", "downshooter");
+        if (USE_INTAKE) deviceMap.put("intake", "id");
         if (USE_IMU) deviceMap.put("imu", "imu");
         imuParameters = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
@@ -165,7 +167,7 @@ public class HardwareUtils {
         this.intake = USE_INTAKE ? config.createMotor("intake") : null;
         this.imu = USE_IMU ? config.createDevice(IMU.class, "imu") : null;
         if (anyNull(frontLeft, frontRight, backLeft, backRight, indexer, leftShooter, rightShooter)) {
-            debug("One or more motors are null!");
+            debug("One or more motors are null: " + anyNullMessage(frontLeft, frontRight, backLeft, backRight, indexer, leftShooter, rightShooter));
             sleep(2000);
         } else {
             initDevices();
@@ -289,6 +291,27 @@ public class HardwareUtils {
         // 2. Stream directly from the array and check for any nulls
         return Arrays.stream(objects).anyMatch(Objects::isNull);
     }
+    private String anyNullMessage(Object... objects) {
+        // 1. Safety check for the array itself
+        if (objects == null || objects.length == 0) {
+            return "Empty";
+        }
+
+        // 2. Stream the indices and find the first index where the element is null
+        int nullIndex = IntStream.range(0, objects.length)
+                .filter(i -> Objects.isNull(objects[i]))
+                .findFirst()
+                .orElse(-1); // Returns -1 if no null is found
+
+        // 3. Return the index message or the success message
+        if (nullIndex != -1) {
+            return "Null found at index: " + nullIndex;
+        }
+
+        return "None are null";
+    }
+
+
 
     private void initDevices() {
         // Set motor directions
