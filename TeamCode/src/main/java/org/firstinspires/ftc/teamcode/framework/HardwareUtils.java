@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.framework;
 
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -7,10 +7,10 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
@@ -20,10 +20,11 @@ import java.util.Objects;
 import java.util.stream.IntStream;
 
 public class HardwareUtils {
-    private final DcMotor frontLeft, frontRight, backLeft, backRight, indexer, intake;
-    private final DcMotorEx leftShooter, rightShooter;
-    private final IMU imu;
-    private final IMU.Parameters imuParameters;
+    public final DcMotor frontLeft, frontRight, backLeft, backRight, indexer, intake;
+    public final DcMotorEx leftShooter, rightShooter;
+    public final Servo leftServo, rightServo;
+    public final IMU imu;
+    public final IMU.Parameters imuParameters;
     private final org.firstinspires.ftc.robotcore.external.Telemetry debug;
     private final Config config;
     private final HashMap<String, String> deviceMap;
@@ -33,36 +34,38 @@ public class HardwareUtils {
     private final double INITIAL_MOVE_SPEED;
     private final double INITIAL_SHOOTER_SPEED;
 
-    private double MIN_MOVE_SPEED;
-    private double MAX_MOVE_SPEED;
-    private double MIN_SHOOTER_SPEED;
-    private double MAX_SHOOTER_SPEED;
-    private double MOVE_ADJUST_AMOUNT;
-    private double SHOOTER_ADJUST_AMOUNT;
-    private double INITIAL_INTAKE_SPEED;
+    private final double MIN_MOVE_SPEED, MAX_MOVE_SPEED,
+            MIN_SHOOTER_SPEED, MAX_SHOOTER_SPEED,
+            MOVE_ADJUST_AMOUNT, SHOOTER_ADJUST_AMOUNT, INITIAL_INTAKE_SPEED, INDEXER_SPEED,
+            MIN_SERVO_POS, MAX_SERVO_POS;
 
-    private final boolean USE_IMU;
-
-    private final boolean USE_INTAKE;
+    private final boolean USE_IMU, USE_INTAKE, USE_SERVO;
 
     {
-        USE_IMU = false;
-        USE_INTAKE = false;
+        USE_IMU = true;
+        USE_INTAKE = true;
+        USE_SERVO = true;
         deviceMap = new HashMap<>();
         deviceMap.put("frontLeft", "FL");
         deviceMap.put("frontRight", "FR");
         deviceMap.put("backLeft", "BL");
         deviceMap.put("backRight", "BR");
-        deviceMap.put("indexer", "intake");
-        deviceMap.put("leftShooter", "upshooter");
-        deviceMap.put("rightShooter", "downshooter");
-        if (USE_INTAKE) deviceMap.put("intake", "id");
-        if (USE_IMU) deviceMap.put("imu", "imu");
+        deviceMap.put("indexer", "index");
+        deviceMap.put("leftShooter", "leftShooter");
+        deviceMap.put("rightShooter", "rightShooter");
+        if (USE_SERVO) {
+        deviceMap.put("leftServo", "leftServo");
+        deviceMap.put("rightServo", "rightServo");
+        }
+        if (USE_INTAKE) {
+        deviceMap.put("intake", "intake"); }
+        if (USE_IMU) {
+        deviceMap.put("imu", "imu"); }
         imuParameters = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
                 RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
         INITIAL_MOVE_SPEED = 0.6;
-        INITIAL_SHOOTER_SPEED = 1200;
+        INITIAL_SHOOTER_SPEED = 800;
         MIN_MOVE_SPEED = 0;
         MAX_MOVE_SPEED = 1;
         MIN_SHOOTER_SPEED = 500;
@@ -70,6 +73,9 @@ public class HardwareUtils {
         MOVE_ADJUST_AMOUNT = 0.05;
         SHOOTER_ADJUST_AMOUNT = 100;
         INITIAL_INTAKE_SPEED = 0.6;
+        INDEXER_SPEED = 1.0;
+        MIN_SERVO_POS = 0.0;
+        MAX_SERVO_POS = 0.3;
     }
 
     private static class Config {
@@ -77,8 +83,8 @@ public class HardwareUtils {
         private double moveSpeed;
         private double shooterSpeed;
         private double intakeSpeed;
-        private com.qualcomm.robotcore.hardware.HardwareMap hardwareMap;
-        private org.firstinspires.ftc.robotcore.external.Telemetry debug;
+        private final com.qualcomm.robotcore.hardware.HardwareMap hardwareMap;
+        private final org.firstinspires.ftc.robotcore.external.Telemetry debug;
 
 
 
@@ -133,6 +139,11 @@ public class HardwareUtils {
             return intakeSpeed;
         }
 
+        public Config setIntakeSpeed(double intakeSpeed) {
+            this.intakeSpeed = intakeSpeed;
+            return this;
+        }
+
         public Map<String, String> getDeviceMap() {
             return deviceMap;
         }
@@ -155,7 +166,8 @@ public class HardwareUtils {
         this.config = new Config(hardwareMap, debug)
                 .setDeviceMap(deviceMap)
                 .setMoveSpeed(INITIAL_MOVE_SPEED)
-                .setShooterSpeed(INITIAL_SHOOTER_SPEED);
+                .setShooterSpeed(INITIAL_SHOOTER_SPEED)
+                .setIntakeSpeed(INITIAL_INTAKE_SPEED);
 
         this.frontLeft = config.createMotor("frontLeft");
         this.frontRight = config.createMotor("frontRight");
@@ -164,9 +176,11 @@ public class HardwareUtils {
         this.indexer = config.createMotor("indexer");
         this.leftShooter = config.createDevice(DcMotorEx.class, "leftShooter");
         this.rightShooter = config.createDevice( DcMotorEx.class, "rightShooter");
+        this.leftServo  = USE_SERVO ? config.createDevice(Servo.class, "leftServo") : null;
+        this.rightServo = USE_SERVO ? config.createDevice(Servo.class, "rightServo") : null;
         this.intake = USE_INTAKE ? config.createMotor("intake") : null;
         this.imu = USE_IMU ? config.createDevice(IMU.class, "imu") : null;
-        if (anyNull(frontLeft, frontRight, backLeft, backRight, indexer, leftShooter, rightShooter)) {
+        if (anyNull(frontLeft, frontRight, backLeft, backRight, indexer, leftShooter, rightShooter, leftServo, rightServo)) {
             debug("One or more motors are null: " + anyNullMessage(frontLeft, frontRight, backLeft, backRight, indexer, leftShooter, rightShooter));
             sleep(2000);
         } else {
@@ -318,7 +332,7 @@ public class HardwareUtils {
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection(DcMotorSimple.Direction.FORWARD);
         frontLeft.setDirection(DcMotorSimple.Direction.FORWARD);
-        backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
+        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // Set brake mode for better control
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -482,15 +496,15 @@ public class HardwareUtils {
     /**
      * Run the indexer forward (feed a ball into the shooter).
      */
-    public void indexForward() {
-        indexer.setPower(-1);
+    public void startIndexer() {
+        indexer.setPower(INDEXER_SPEED);
     }
 
     /**
      * Run the indexer backward (reverse a ball out).
      */
-    public void indexReverse() {
-        indexer.setPower(1);
+    public void reverseIndexer() {
+        indexer.setPower(-INDEXER_SPEED);
     }
 
     /**
@@ -504,7 +518,7 @@ public class HardwareUtils {
      * Shoot a single ball by spinning the indexer for a fixed time.
      */
     public void shootOneBall() {
-        indexForward();
+        startIndexer();
         sleep(500);
         stopIndexer();
         sleep(200);
@@ -546,9 +560,49 @@ public class HardwareUtils {
      */
     public void reverseIntake() {
         if (intake == null) return;
-        double speed = config.getShooterSpeed();
-        leftShooter.setPower(-speed);
-        rightShooter.setPower(-speed);
+        double speed = config.getIntakeSpeed();
+        intake.setPower(-speed);
+    }
+
+
+    public void unjam() {
+        reverseIntake();
+        reverseShooter();
+        reverseIndexer();
+    }
+
+    public void stopShooting() {
+        stopIntake();
+        stopIndexer();
+        stopShooter();
+    }
+
+    public double getLeftServoPosition() {
+        if (!USE_SERVO) return 0;
+        return leftServo.getPosition();
+    }
+
+    public double getRightServoPosition() {
+        if (!USE_SERVO) return 0;
+        return rightServo.getPosition();
+    }
+
+    public void setServoPosition(double position) {
+        if (!USE_SERVO) return;
+        double setPosition = Math.max(MIN_SERVO_POS, Math.min(MAX_SERVO_POS, position));
+        if (leftServo  != null) leftServo.setPosition(setPosition);
+        if (rightServo != null) rightServo.setPosition(setPosition);
+    }
+    public void setLeftServoPosition(double position) {
+        if (!USE_SERVO) return;
+        double setPosition = Math.max(MIN_SERVO_POS, Math.min(MAX_SERVO_POS, position));
+        if (leftServo  != null) leftServo.setPosition(setPosition);
+    }
+
+    public void setRightServoPosition(double position) {
+        if (!USE_SERVO) return;
+        double setPosition = Math.max(MIN_SERVO_POS, Math.min(MAX_SERVO_POS, position));
+        if (rightServo != null) rightServo.setPosition(setPosition);
     }
 
     // ==================== UTILITY FUNCTIONS ====================
