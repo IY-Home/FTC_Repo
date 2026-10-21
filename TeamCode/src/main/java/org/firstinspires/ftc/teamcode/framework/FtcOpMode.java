@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.framework;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
@@ -54,7 +54,6 @@ public abstract class FtcOpMode extends LinearOpMode {
      */
     protected void setDriveY(double y) {
         this.driveY = -y;
-        updateDrive();
     }
 
     /**
@@ -62,7 +61,6 @@ public abstract class FtcOpMode extends LinearOpMode {
      */
     protected void setDriveX(double x) {
         this.driveX = x;
-        updateDrive();
     }
 
     /**
@@ -70,7 +68,6 @@ public abstract class FtcOpMode extends LinearOpMode {
      */
     protected void setDriveRx(double rx) {
         this.driveRx = rx;
-        updateDrive();
     }
 
     /**
@@ -93,10 +90,10 @@ public abstract class FtcOpMode extends LinearOpMode {
     }
 
     public void customInit() {};
-    public abstract void run();
+    public void run() {};
 
     @Override
-    public void runOpMode() throws InterruptedException {
+    public final void runOpMode() {
         telemetry.addLine("Initializing hardware...");
         telemetry.update();
         sleep(50);
@@ -113,7 +110,8 @@ public abstract class FtcOpMode extends LinearOpMode {
         if (isStopRequested()) return;
         while (opModeIsActive()) {
             run();
-            if (useGamepad) gamepadConfig.executeActions();
+            if (useGamepad) gamepadConfig.run();
+            updateDrive();
             if (showTelemetry) updateTelemetry();
             if (handleStopRequest()) break;
         }

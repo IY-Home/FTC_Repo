@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
+import org.firstinspires.ftc.teamcode.framework.AutoOp;
+
 @Autonomous(name = "AutoOp (Blue, no shoot)", group = "FTC")
 public class AutoOp_Blue_Noshoot extends AutoOp {
 

@@ -23,6 +23,19 @@ android {
     }
 }
 
+repositories {
+    maven { url = 'https://maven.brott.dev/' }
+}
+
 dependencies {
     implementation project(':FtcRobotController')
+    implementation(libs.jjwt)
+    //implementation(libs.jackson.databind)
+    //implementation(libs.jackson.datatype.jsr310)
+    compileOnly(libs.javax.servlet.api)
+    implementation(libs.commons.fileupload)
+    implementation(libs.commons.io)
+    runtimeOnly(libs.jjwt.impl)
+    runtimeOnly(libs.jjwt.jackson)
+    implementation 'com.acmerobotics.dashboard:dashboard:0.6.0'
 }

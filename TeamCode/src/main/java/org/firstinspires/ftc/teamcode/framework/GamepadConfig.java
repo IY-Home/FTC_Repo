@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.framework;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,12 +9,8 @@ import java.util.function.Function;
 
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-public class GamepadConfig {
+public class GamepadConfig implements Runnable {
     private final ArrayList<KeyMap> maps;
-
-    public interface KeyMap {
-        void executeActions();
-    }
 
     public interface Pressable {
         boolean isPressed(Gamepad gamepad);
@@ -134,135 +130,71 @@ public class GamepadConfig {
         }
     }
 
-    public static class ButtonMap implements KeyMap {
+    public static class KeyMap implements Runnable {
         private final Gamepad targetGamepad;
+        private final HashMap<Axis, Consumer<Float>> moveActions;
 
-        private final HashMap<Button, Runnable> pressActions;
-        private final HashMap<Button, Runnable> pressOnceActions;
-        private final HashMap<Button, Runnable> releaseActions;
-        private final HashMap<Button, Runnable> releaseOnceActions;
+        private final HashMap<Pressable, Runnable> pressActions;
+        private final HashMap<Pressable, Runnable> pressOnceActions;
+        private final HashMap<Pressable, Runnable> releaseActions;
+        private final HashMap<Pressable, Runnable> releaseOnceActions;
 
-        public ButtonMap(Gamepad targetGamepad) {
+        public KeyMap(Gamepad targetGamepad) {
             this.targetGamepad = targetGamepad;
+            this.moveActions = new HashMap<>();
             this.pressActions = new HashMap<>();
             this.pressOnceActions = new HashMap<>();
             this.releaseActions = new HashMap<>();
             this.releaseOnceActions = new HashMap<>();
         }
-
-        public ButtonMap whenPressed(Button b, Runnable r) {
+        public KeyMap track(Axis a, Consumer<Float> r) {
+            moveActions.put(a, r);
+            return this;
+        }
+        public KeyMap whenPressed(Pressable b, Runnable r) {
             pressActions.put(b, r);
             return this;
         }
-        public ButtonMap onClick(Button b, Runnable r) {
+        public KeyMap onClick(Pressable b, Runnable r) {
             pressOnceActions.put(b, r);
             return this;
         }
-        public ButtonMap whenReleased(Button b, Runnable r) {
+        public KeyMap whenReleased(Pressable b, Runnable r) {
             releaseActions.put(b, r);
             return this;
         }
-        public ButtonMap onRelease(Button b, Runnable r) {
+        public KeyMap onRelease(Pressable b, Runnable r) {
             releaseOnceActions.put(b, r);
             return this;
         }
 
-        public ButtonMap unlink(Button b) {
+        public KeyMap unlink(Pressable b) {
             pressActions.remove(b);
             pressOnceActions.remove(b);
             return this;
         }
 
         @Override
-        public void executeActions() {
-            for (Map.Entry<Button, Runnable> entry : pressActions.entrySet()) {
-                if (entry.getKey().isPressed(targetGamepad)) {
-                    entry.getValue().run();
-                }
-            }
-            for (Map.Entry<Button, Runnable> entry : pressOnceActions.entrySet()) {
-                if (entry.getKey().wasJustPressed(targetGamepad)) {
-                    entry.getValue().run();
-                }
-            }
-            for (Map.Entry<Button, Runnable> entry : releaseActions.entrySet()) {
-                if (!entry.getKey().isPressed(targetGamepad)) {
-                    entry.getValue().run();
-                }
-            }
-            for (Map.Entry<Button, Runnable> entry : releaseOnceActions.entrySet()) {
-                if (entry.getKey().wasJustReleased(targetGamepad)) {
-                    entry.getValue().run();
-                }
-            }
-        }
-    }
-    public static class AxisMap implements KeyMap {
-        private final Gamepad targetGamepad;
-        private final HashMap<Axis, Consumer<Float>> moveActions;
-
-        private final HashMap<Axis, Runnable> pressActions;
-        private final HashMap<Axis, Runnable> pressOnceActions;
-        private final HashMap<Axis, Runnable> releaseActions;
-        private final HashMap<Axis, Runnable> releaseOnceActions;
-
-        public AxisMap(Gamepad targetGamepad) {
-            this.targetGamepad = targetGamepad;
-            this.pressActions = new HashMap<>();
-            this.pressOnceActions = new HashMap<>();
-            this.moveActions = new HashMap<>();
-            this.releaseActions = new HashMap<>();
-            this.releaseOnceActions = new HashMap<>();
-        }
-
-        public AxisMap track(Axis a, Consumer<Float> r) {
-            moveActions.put(a, r);
-            return this;
-        }
-        public AxisMap whenPressed(Axis a, Runnable r) {
-            pressActions.put(a, r);
-            return this;
-        }
-        public AxisMap onClick(Axis a, Runnable r) {
-            pressOnceActions.put(a, r);
-            return this;
-        }
-        public AxisMap whenReleased(Axis a, Runnable r) {
-            releaseActions.put(a, r);
-            return this;
-        }
-        public AxisMap onRelease(Axis a, Runnable r) {
-            releaseOnceActions.put(a, r);
-            return this;
-        }
-        public AxisMap unlink(Axis a) {
-            moveActions.remove(a);
-            pressActions.remove(a);
-            pressOnceActions.remove(a);
-            return this;
-        }
-
-        @Override
-        public void executeActions() {
+        public void run() {
             for (Map.Entry<Axis, Consumer<Float>> entry : moveActions.entrySet()) {
                 entry.getValue().accept(-(entry.getKey().getValue(targetGamepad)));
             }
-            for (Map.Entry<Axis, Runnable> entry : pressActions.entrySet()) {
+            for (Map.Entry<Pressable, Runnable> entry : pressActions.entrySet()) {
                 if (entry.getKey().isPressed(targetGamepad)) {
                     entry.getValue().run();
                 }
             }
-            for (Map.Entry<Axis, Runnable> entry : pressOnceActions.entrySet()) {
+            for (Map.Entry<Pressable, Runnable> entry : pressOnceActions.entrySet()) {
                 if (entry.getKey().wasJustPressed(targetGamepad)) {
                     entry.getValue().run();
                 }
             }
-            for (Map.Entry<Axis, Runnable> entry : releaseActions.entrySet()) {
+            for (Map.Entry<Pressable, Runnable> entry : releaseActions.entrySet()) {
                 if (!entry.getKey().isPressed(targetGamepad)) {
                     entry.getValue().run();
                 }
             }
-            for (Map.Entry<Axis, Runnable> entry : releaseOnceActions.entrySet()) {
+            for (Map.Entry<Pressable, Runnable> entry : releaseOnceActions.entrySet()) {
                 if (entry.getKey().wasJustReleased(targetGamepad)) {
                     entry.getValue().run();
                 }
@@ -274,20 +206,16 @@ public class GamepadConfig {
         this.maps = new ArrayList<>();
     }
 
-    public ButtonMap setButtons(Gamepad gamepad) {
-        ButtonMap buttonMap = new ButtonMap(gamepad);
-        this.maps.add(buttonMap);
-        return buttonMap;
-    }
-    public AxisMap setAxes(Gamepad gamepad) {
-        AxisMap axisMap = new AxisMap(gamepad);
-        this.maps.add(axisMap);
-        return axisMap;
+    public KeyMap on(Gamepad gamepad) {
+        KeyMap keyMap = new KeyMap(gamepad);
+        this.maps.add(keyMap);
+        return keyMap;
     }
 
-    public void executeActions() {
+    @Override
+    public void run() {
         for (KeyMap keyMap : maps) {
-            keyMap.executeActions();
+            keyMap.run();
         }
     }
 
